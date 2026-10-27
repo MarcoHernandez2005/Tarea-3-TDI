@@ -1,72 +1,151 @@
-# Tarea 2 TDI - Financiera Huanca (Spring MVC)
+# Tarea 3: Sistema Web Financiero con Spring MVC y MySQL — Financiera Huanca
 
-Aplicación web desarrollada bajo el patrón de arquitectura Modelo-Vista-Controlador (MVC) utilizando Spring Framework. El sistema permite registrar datos personales y simular los detalles de un crédito financiero, guardando la información en una base de datos MySQL y devolviendo una vista de resumen.
+**Asignatura:** Tecnologías para Desarrollos en Internet  
+**Semestre:** 2027-1  
+**Integrantes:**
+* Marco Antonio Hernández Torres
+* Libni Jael Morales Silva  
 
-## Equipo de Desarrollo
-* Hernández Torres Marco Antonio
-* Morales Silva Libni Jael
+---
 
-## Tecnologías y Requisitos Previos
-Para compilar y ejecutar este proyecto, es necesario contar con el siguiente entorno:
-* **Java Development Kit (JDK):** Versión 17
-* **Servidor de Aplicaciones:** Apache Tomcat 9.0.x
-* **Base de Datos:** MySQL Server 8.0+
-* **Framework:** Spring Web MVC 5.3.31
-* **Librerías Adicionales:** JSTL 3.0.2, MySQL Connector/J 8.x o superior
+## Descripción del Proyecto
 
-## Configuración de la Base de Datos
-1. Abre MySQL Workbench (o tu cliente de preferencia) y ejecuta el siguiente script para preparar las tablas:
+Esta aplicación web es una extensión de la **Tarea 2** para la gestión de solicitudes de crédito y registro de pagos de tarjetas de crédito del sistema **Financiera Huanca**.
+
+El sistema integra el patrón **MVC (Modelo-Vista-Controlador)** mediante **Spring Framework**, conectándose a una base de datos relacional **MySQL** para la consulta y actualización dinámica de información financiera en tiempo real.
+
+---
+
+## Características Principales
+
+1. **Formulario Dinámico con Pestañas:**
+   * **Datos Personales:** Captura fecha, nombre completo y documento de identidad.
+   * **Datos del Crédito:** Selección de moneda (Soles / Dólares), monto, plazo en meses, cuota mensual, TEA % y fecha de vencimiento.
+   * Validación en cliente (JavaScript) para asegurar consistencia en fechas.
+
+2. **Tabla Interactiva de Gastos y Pagos:**
+   * Carga dinámica de movimientos desde la tabla `Gastos_Tarjeta` en MySQL.
+   * Columnas no editables (*Fecha, Mes, Tarjeta, Transacción, Gastos*) para consulta.
+   * **Columna de Pagos Editable:** Permite al usuario capturar o modificar montos mediante un *wrapper list binding* en Spring MVC (`GastoWrapper`).
+
+3. **Persistencia en MySQL:**
+   * Inserción automática de los datos del cliente y la solicitud de crédito (`Datos_Personales` y `Datos_Credito`).
+   * Actualización (`UPDATE`) de los montos de pago registrados en la tabla de tarjetas.
+
+4. **Vista de Resumen:**
+   * Renderizado final en `resumen.jsp` confirmando la transacción, mostrando el desglose del crédito y desplegando la lista de pagos efectuados.
+
+---
+
+## Tecnologías Utilizadas
+
+* **Lenguaje:** Java 17+ / JDK
+* **Framework:** Spring MVC 5.3.31
+* **Servidor Web / Container:** Apache Tomcat 9.0.121 (`javax.servlet`)
+* **Librería de Etiquetas:** JSTL 1.2
+* **Base de Datos:** MySQL Server 8.0+ / MySQL Workbench
+* **Vistas:** JSP (JavaServer Pages), JSTL, Spring Form Tags, HTML5, CSS3, JavaScript
+* **Entorno de Desarrollo:** Apache NetBeans IDE
+
+---
+
+## Estructura de la Base de Datos (MySQL)
+
+Para la ejecución del proyecto se requiere crear el esquema `test` y las tablas correspondientes con el siguiente script:
 
 ```sql
-CREATE DATABASE IF NOT EXISTS test;
 USE test;
 
-DROP TABLE IF EXISTS Datos_Personales;
-CREATE TABLE Datos_Personales (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    documento VARCHAR(20) NOT NULL,
-    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Tabla de gastos de tarjeta
+DROP TABLE IF EXISTS Gastos_Tarjeta;
+CREATE TABLE Gastos_Tarjeta (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fecha VARCHAR(15) NOT NULL,
+    mes VARCHAR(15) NOT NULL,
+    tarjeta VARCHAR(30) NOT NULL,
+    transaccion VARCHAR(100) NOT NULL,
+    gasto DECIMAL(12,2) DEFAULT NULL,
+    pago DECIMAL(12,2) DEFAULT NULL
 );
 
-DROP TABLE IF EXISTS Datos_Credito;
-CREATE TABLE Datos_Credito (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    fecha DATE NOT NULL,
+-- Inserción de datos iniciales
+INSERT INTO Gastos_Tarjeta (fecha, mes, tarjeta, transaccion, gasto, pago) VALUES
+('1/1/2021', 'enero', 'VISA', 'Peluquería', 1000.00, NULL),
+('2/1/2021', 'enero', 'VISA', 'TV plasma (1 de 6)', 2500.00, NULL),
+('3/1/2021', 'enero', 'MASTERCARD', 'Vajilla Kit', 2500.00, NULL),
+('4/1/2021', 'enero', 'MASTERCARD', 'YouTube Premium', 170.00, NULL),
+('5/1/2021', 'enero', 'VISA', 'Pasaje Londres', 25000.00, NULL),
+('6/1/2021', 'enero', 'MASTERCARD', 'Pago Mastercard', NULL, 2670.00),
+('7/2/2021', 'febrero', 'VISA', 'Teatro', 150.00, NULL),
+('8/2/2021', 'febrero', 'VISA', 'Pago VISA', NULL, 150.00),
+('9/2/2021', 'febrero', 'MASTERCARD', 'Cine', 23.00, NULL),
+('10/2/2021', 'febrero', 'MASTERCARD', 'Libros x 5', 1400.00, NULL);
+
+-- Tabla para almacenar datos personales del cliente
+CREATE TABLE IF NOT EXISTS Datos_Personales (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    documento VARCHAR(20) NOT NULL
+);
+
+-- Tabla para almacenar el registro de solicitudes de crédito
+CREATE TABLE IF NOT EXISTS Datos_Credito (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fecha VARCHAR(15) NOT NULL,
     periodo INT NOT NULL,
-    moneda VARCHAR(10) NOT NULL,
+    moneda VARCHAR(20) NOT NULL,
     monto DECIMAL(12,2) NOT NULL,
     cuota DECIMAL(12,2) NOT NULL,
     tea DECIMAL(5,2) NOT NULL,
-    vencimiento DATE NOT NULL,
-    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    vencimiento VARCHAR(15) NOT NULL
 );
 
-Verifica las credenciales de conexión. Si el servidor MySQL evaluador utiliza una contraseña distinta, dirígete al archivo src/java/controladores/CreditoController.java y actualiza la constante DB_PASSWORD.
+Estructura del Proyecto
+Tarea-2-TDI-Financiera-Huanca/
+├── src/
+│   └── java/
+│       ├── controladores/
+│       │   └── CreditoController.java    # Controlador principal de Spring MVC
+│       └── modelos/
+│           ├── Gasto.java                # Modelo para la entidad Gasto/Tarjeta
+│           └── GastoWrapper.java         # Wrapper para vinculación de colecciones en formulario
+├── web/
+│   ├── META-INF/
+│   │   └── context.xml
+│   └── WEB-INF/
+│       ├── applicationContext.xml        # Configuración raíz de Spring
+│       ├── dispatcher-servlet.xml        # Configuración de Servlets y ViewResolver
+│       ├── web.xml                       # Despliegue de la aplicación web
+│       ├── lib/                          # Driver MySQL y librerías Spring / JSTL 1.2
+│       └── jsp/
+│           ├── formulario.jsp            # Vista del formulario y tabla interactiva
+│           ├── index.jsp                 # Vista de bienvenida
+│           └── resumen.jsp               # Vista con el resumen de la transacción
+├── build.xml                             # Script de construcción Ant
+└── README.md                             # Documentación del repositorio
 
-Despliegue y Ejecución en NetBeans
-Clona este repositorio o extrae el archivo ZIP en tu espacio de trabajo.
+Instrucciones de Configuración y Ejecución
+Base de Datos:
 
-Abre el proyecto en Apache NetBeans.
+Asegúrate de tener MySQL Server en ejecución local (localhost:3306).
 
-Confirma que el proyecto esté utilizando JDK 17 (Properties > Libraries > Java Platform y Properties > Sources > Source/Binary Format).
+Ejecuta el script SQL en el esquema test.
 
-Asegúrate de que el archivo mysql-connector-j-XX.X.X.jar se encuentre dentro de la carpeta física web/WEB-INF/lib.
+Apertura del Proyecto:
 
-Haz clic en el botón Clean and Build para compilar las fuentes y aplicar el filtro UTF-8 de web.xml.
+Abre Apache NetBeans IDE.
 
-Haz clic en Run para desplegar en Tomcat.
+Ve a File -> Open Project... y selecciona la carpeta del proyecto.
 
-En el navegador de tu preferencia, accede a la ruta del formulario:
-http://localhost:8080/Tarea2_SpringMVC/inicio
+Configuración de Servidor:
 
-Estructura Principal
-CreditoController.java: Controlador de Spring que intercepta las peticiones, gestiona la conexión JDBC a MySQL con carga explícita del driver y envía los atributos al modelo.
+Asegúrate de asociar el proyecto a Apache Tomcat 9.0.x.
 
-formulario.jsp: Interfaz gráfica de la Financiera Huanca (HTML/CSS/JS puro) que captura y valida los datos.
+Compilación y Ejecución:
 
-resumen.jsp: Vista de éxito que renderiza los valores inyectados por el controlador.
+Haz clic derecho sobre el proyecto y selecciona Clean and Build.
 
-dispatcher-servlet.xml: Configuración del escaneo de componentes y ViewResolver.
+Presiona Run (F6).
 
-web.xml: Configuración del DispatcherServlet y filtro de codificación para evitar caracteres corruptos.
+La aplicación estará disponible en la ruta principal:http://localhost:8080/Tarea2_SpringMVC/inicio
+

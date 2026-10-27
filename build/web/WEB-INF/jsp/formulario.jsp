@@ -1,12 +1,14 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset='UTF-8'>
     <title>Financiera Huanca</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #2c3e50; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .ventana { width: 700px; background: #d4d0c8; border: 2px solid #808080; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #2c3e50; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .ventana { width: 700px; background: #d4d0c8; border: 2px solid #808080; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; margin-bottom: 20px; }
         .barra-titulo { background: linear-gradient(180deg, #0a246a 0%, #3a6ea5 100%); color: white; padding: 8px 12px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
         .botones-ventana { display: flex; gap: 5px; }
         .btn-ventana { width: 20px; height: 20px; background: #c0c0c0; border: 1px solid #808080; border-radius: 2px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -22,78 +24,135 @@
         .campo input[type='text'], .campo input[type='date'], .campo input[type='number'] { flex: 1; padding: 6px 8px; border: 1px solid #808080; background: white; font-size: 13px; border-radius: 2px; }
         .campo .unidad { margin-left: 10px; font-size: 13px; color: #333; }
         .radio-group { display: flex; flex-direction: column; gap: 8px; }
-        .radio-group label { display: flex; align-items: center; font-weight: normal; cursor: pointer; }
+        .radio-group label { display: flex; align-items: center; font-weight: normal; cursor: pointer; font-size: 13px; }
         .radio-group input { margin-right: 8px; }
         .btn-aceptar { background: #d4d0c8; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; padding: 10px 40px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 20px; display: block; margin-left: auto; }
         .btn-aceptar:hover { background: #e0dcd4; }
         .btn-aceptar:active { border-color: #808080 #ffffff #ffffff #808080; }
+        
+        .tabla-contenedor { width: 700px; background: white; margin-top: 10px; font-family: Arial, sans-serif; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .tabla-header { background-color: #4db8a1; color: white; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; }
+        .tabla-gastos { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; }
+        .tabla-gastos th { background-color: #66cdaa; color: white; padding: 8px; border: 1px solid #ddd; }
+        .tabla-gastos td { padding: 5px; border-bottom: 1px solid #eee; color: #555; }
+        .tabla-gastos td input { width: 80px; padding: 3px; font-size: 12px; text-align: right; }
     </style>
 </head>
 <body>
-<div class='ventana'>
-  <div class='barra-titulo'>
-    <span>Financiera Huanca</span>
-    <div class='botones-ventana'>
-      <div class='btn-ventana'>_</div>
-      <div class='btn-ventana'>□</div>
-      <div class='btn-ventana cerrar'>✕</div>
-    </div>
-  </div>
-  <div class='pestanas'>
-    <div class='pestana activa' onclick="cambiarPestana('datosPersonales', this)">Datos personales</div>
-    <div class='pestana' onclick="cambiarPestana('datosCredito', this)">Datos del crédito</div>
-  </div>
-  <div class='contenido'>
-    <form action='guardarCredito' method='POST' onsubmit='return validarFechas()'>
-      <div id='datosPersonales' class='panel activo'>
-        <div class='campo'>
-          <label>Fecha</label>
-          <input type='date' name='fecha' id='fecha' required>
-        </div>
-        <div class='campo'>
-          <label>Nombre completo</label>
-          <input type='text' name='nombre' placeholder='Ej: Juan Pérez' required>
-        </div>
-        <div class='campo'>
-          <label>Documento</label>
-          <input type='text' name='documento' placeholder='Ej: 12345678' required>
+
+<form:form action="guardarCredito" method="POST" modelAttribute="wrapper" onsubmit="return validarFechas()">
+    <div class='ventana'>
+      <div class='barra-titulo'>
+        <span>Financiera Huanca</span>
+        <div class='botones-ventana'>
+          <div class='btn-ventana'>_</div>
+          <div class='btn-ventana'>□</div>
+          <div class='btn-ventana cerrar'>✕</div>
         </div>
       </div>
-      <div id='datosCredito' class='panel'>
-        <div class='campo'>
-          <label>Moneda</label>
-          <div class='radio-group'>
-            <label><input type='radio' name='moneda' value='Soles' checked> Soles (S/.)</label>
-            <label><input type='radio' name='moneda' value='Dólares'> Dólares (US$)</label>
+      <div class='pestanas'>
+        <div class='pestana activa' onclick="cambiarPestana('datosPersonales', this)">Datos personales</div>
+        <div class='pestana' onclick="cambiarPestana('datosCredito', this)">Datos del crédito</div>
+      </div>
+      <div class='contenido'>
+          <div id='datosPersonales' class='panel activo'>
+            <div class='campo'>
+              <label>Fecha</label>
+              <input type='date' name='fecha' id='fecha' required>
+            </div>
+            <div class='campo'>
+              <label>Nombre completo</label>
+              <input type='text' name='nombre' placeholder='Ej: Juan Pérez' required>
+            </div>
+            <div class='campo'>
+              <label>Documento</label>
+              <input type='text' name='documento' placeholder='Ej: 12345678' required>
+            </div>
           </div>
-        </div>
-        <div class='campo'>
-          <label>Monto</label>
-          <input type='number' name='monto' placeholder='Ej: 5100' min='0' step='0.01' required>
-        </div>
-        <div class='campo'>
-          <label>Periodo</label>
-          <input type='number' name='periodo' placeholder='Ej: 12' min='1' max='60' required>
-          <span class='unidad'>meses</span>
-        </div>
-        <div class='campo'>
-          <label>Cuota</label>
-          <input type='number' name='cuota' placeholder='Ej: 1000' min='0' step='0.01' required>
-        </div>
-        <div class='campo'>
-          <label>TEA</label>
-          <input type='number' name='tea' placeholder='Ej: 10' step='0.01' required>
-          <span class='unidad'>%</span>
-        </div>
-        <div class='campo'>
-          <label>Fecha vencimiento</label>
-          <input type='date' name='fecha_vencimiento' id='fechaVencimiento' required>
-        </div>
+          <div id='datosCredito' class='panel'>
+            <div class='campo'>
+              <label>Moneda</label>
+              <div class='radio-group'>
+                <label><input type='radio' name='moneda' value='Soles' checked> Soles (S/.)</label>
+                <label><input type='radio' name='moneda' value='Dólares'> Dólares (US$)</label>
+              </div>
+            </div>
+            <div class='campo'>
+              <label>Monto</label>
+              <input type='number' name='monto' placeholder='Ej: 5100' min='0' step='0.01' required>
+            </div>
+            <div class='campo'>
+              <label>Periodo</label>
+              <input type='number' name='periodo' placeholder='Ej: 12' min='1' max='60' required>
+              <span class='unidad'>meses</span>
+            </div>
+            <div class='campo'>
+              <label>Cuota</label>
+              <input type='number' name='cuota' placeholder='Ej: 1000' min='0' step='0.01' required>
+            </div>
+            <div class='campo'>
+              <label>TEA</label>
+              <input type='number' name='tea' placeholder='Ej: 10' step='0.01' required>
+              <span class='unidad'>%</span>
+            </div>
+            <div class='campo'>
+              <label>Fecha vencimiento</label>
+              <input type='date' name='fecha_vencimiento' id='fechaVencimiento' required>
+            </div>
+          </div>
+          <button type='submit' class='btn-aceptar'>ACEPTAR</button>
       </div>
-      <button type='submit' class='btn-aceptar'>ACEPTAR</button>
-    </form>
-  </div>
-</div>
+    </div>
+
+    <div class="tabla-contenedor">
+        <div class="tabla-header">
+            <span>Gastos con tarjeta de crédito</span>
+            <span style="font-size: 11px; font-weight: normal;">PlanillaExcel.com</span>
+        </div>
+        <div style="padding: 10px; font-size: 12px; color: #777;">
+            Registre abajo los gastos y pagos realizados de la tarjeta
+        </div>
+        <table class="tabla-gastos">
+            <thead>
+                <tr>
+                    <th>FECHA</th>
+                    <th>MES</th>
+                    <th>TARJETA</th>
+                    <th>TRANSACCION</th>
+                    <th>GASTOS</th>
+                    <th>PAGOS</th>
+                </tr>
+            </thead>
+            <tbody>
+                <c:forEach items="${wrapper.listaGastos}" var="gasto" varStatus="status">
+                    <tr>
+                        <td>
+                            ${gasto.fecha}
+                            <form:hidden path="listaGastos[${status.index}].id" value="${gasto.id}" />
+                        </td>
+                        <td>${gasto.mes}</td>
+                        <td>${gasto.tarjeta}</td>
+                        <td>${gasto.transaccion}</td>
+                        <td>
+                            <c:if test="${gasto.gasto != null}">$ ${gasto.gasto}</c:if>
+                        </td>
+                        <td>
+                            <c:choose>
+                                <c:when test="${gasto.pago != null}">
+                                    <form:input type="number" step="0.01" path="listaGastos[${status.index}].pago" value="${gasto.pago}" style="color:red; font-weight:bold;" />
+                                </c:when>
+                                <c:otherwise>
+                                    <form:input type="number" step="0.01" path="listaGastos[${status.index}].pago" placeholder="0.00" />
+                                </c:otherwise>
+                            </c:choose>
+                        </td>
+                    </tr>
+                </c:forEach>
+            </tbody>
+        </table>
+    </div>
+</form:form>
+
 <script>
 function cambiarPestana(id, elemento) {
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('activo'); });

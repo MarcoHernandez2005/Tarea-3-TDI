@@ -1,11 +1,17 @@
 package controladores;
 
+import modelos.Gasto;
+import modelos.GastoWrapper;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Controller
 public class CreditoController {
@@ -15,7 +21,42 @@ public class CreditoController {
     private static final String DB_PASSWORD = "Tony2005*";
 
     @RequestMapping(value = "/inicio", method = RequestMethod.GET)
-    public String mostrarFormulario() {
+    public String mostrarFormulario(Model model) {
+        GastoWrapper wrapper = new GastoWrapper();
+        List<Gasto> lista = new ArrayList<>();
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+                String sql = "SELECT * FROM Gastos_Tarjeta";
+                try (PreparedStatement ps = conn.prepareStatement(sql);
+                     ResultSet rs = ps.executeQuery()) {
+                    
+                    while (rs.next()) {
+                        Gasto g = new Gasto();
+                        g.setId(rs.getInt("id"));
+                        g.setFecha(rs.getString("fecha"));
+                        g.setMes(rs.getString("mes"));
+                        g.setTarjeta(rs.getString("tarjeta"));
+                        g.setTransaccion(rs.getString("transaccion"));
+                        
+                        Object objGasto = rs.getObject("gasto");
+                        g.setGasto(objGasto != null ? ((Number) objGasto).doubleValue() : null);
+                        
+                        Object objPago = rs.getObject("pago");
+                        g.setPago(objPago != null ? ((Number) objPago).doubleValue() : null);
+                        
+                        lista.add(g);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        wrapper.setListaGastos(lista);
+        model.addAttribute("wrapper", wrapper);
+        
         return "formulario";
     }
 
@@ -30,6 +71,7 @@ public class CreditoController {
             @RequestParam("cuota") String cuota,
             @RequestParam("tea") String tea,
             @RequestParam("fecha_vencimiento") String fechaVencimiento,
+            @ModelAttribute("wrapper") GastoWrapper wrapper,
             Model model) {
 
         boolean guardadoPersonales = false;
@@ -37,10 +79,7 @@ public class CreditoController {
         String mensajeError = "";
 
         try {
-            // 1. Registrar el driver explícitamente ANTES de intentar conectar
             Class.forName("com.mysql.cj.jdbc.Driver");
-
-            // 2. Abrir la conexión
             try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
                 
                 String sqlPersonales = "INSERT INTO Datos_Personales (nombre, documento) VALUES (?, ?)";
@@ -61,6 +100,19 @@ public class CreditoController {
                     psCredito.setString(7, fechaVencimiento);
                     if (psCredito.executeUpdate() > 0) guardadoCredito = true;
                 }
+
+                if (wrapper != null && wrapper.getListaGastos() != null) {
+                    String sqlUpdate = "UPDATE Gastos_Tarjeta SET pago = ? WHERE id = ?";
+                    try (PreparedStatement psUpdate = conn.prepareStatement(sqlUpdate)) {
+                        for (Gasto g : wrapper.getListaGastos()) {
+                            if (g.getPago() != null) {
+                                psUpdate.setDouble(1, g.getPago());
+                                psUpdate.setInt(2, g.getId());
+                                psUpdate.executeUpdate();
+                            }
+                        }
+                    }
+                }
             }
         } catch (Exception e) {
             mensajeError = "Error al conectar o guardar: " + e.getMessage();
@@ -77,6 +129,7 @@ public class CreditoController {
         model.addAttribute("cuota", cuota);
         model.addAttribute("tea", tea);
         model.addAttribute("fechaVencimiento", fechaVencimiento);
+        model.addAttribute("listaPagos", wrapper != null ? wrapper.getListaGastos() : null);
 
         return "resumen";
     }
